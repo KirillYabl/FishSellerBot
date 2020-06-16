@@ -76,7 +76,7 @@ def send_cart_info(bot, update):
 
         keyboard.append([InlineKeyboardButton(f'Убрать из корзины {item["name"]}', callback_data=item['cart_item_id'])])
 
-        logger.debug(f'item {item["card_item_id"]} was processed, btn added')
+        logger.debug(f'item {item["cart_item_id"]} was processed, btn added')
 
     keyboard.append([InlineKeyboardButton('В меню', callback_data='to_menu')])
     keyboard.append([InlineKeyboardButton('Оплата', callback_data='payment')])
