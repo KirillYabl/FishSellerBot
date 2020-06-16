@@ -206,7 +206,7 @@ def handle_cart(bot, update):
     if query.data == 'payment':
         logger.debug('User chose payment')
         msg = 'Пожалуйста, пришлите ваш email'
-        bot.send_message(text=msg, chat_id=update.message.chat_id)
+        bot.send_message(text=msg, chat_id=query.message.chat_id)
         return 'WAITING_EMAIL'
 
     access_keeper = get_elasticpath_access_keeper()
