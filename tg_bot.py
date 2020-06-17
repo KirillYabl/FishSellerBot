@@ -234,6 +234,7 @@ def handle_description(bot, update):
     access_keeper = get_elasticpath_access_keeper()
     product_id, quantity = query.data.split()
     logger.debug(f'User chose add product to cart. Product_id = {product_id}; quantity={quantity}')
+    update.callback_query.answer(text='Товар добавлен в корзину', show_alert=True)
     elasticpath_api.add_product_to_cart(access_keeper, product_id, quantity, query.message.chat_id)
     return 'HANDLE_DESCRIPTION'
 
