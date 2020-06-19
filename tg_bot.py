@@ -1,7 +1,5 @@
 import logging
 import math
-from pprint import pprint
-import json
 
 import environs
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -155,28 +153,6 @@ def start(bot, update):
     return 'HANDLE_MENU'
 
 
-def get_cart_product(access_keeper, chat_id, product_id):
-    """Get info abouc product in cart by :product_id: for user :chat_id:"""
-    cart_items_info = elasticpath_api.get_cart_items_info(access_keeper, chat_id)['products']
-    default_product = {
-        'description': '',
-        'name': '',
-        'quantity': 0,
-        'price_per_unit': '',
-        'total_price': '$0.00',
-        'product_id': '',
-        'cart_item_id': ''
-    }
-    cart_product = [product for product in cart_items_info if product['product_id'] == product_id]
-
-    try:
-        cart_product = cart_product[0]
-    except IndexError:
-        cart_product = default_product
-
-    return cart_product
-
-
 def handle_menu(bot, update):
     """Menu with products."""
     query = update.callback_query
@@ -201,7 +177,7 @@ def handle_menu(bot, update):
     image_id = product['relationships']['main_image']['data']['id']
     image_href = elasticpath_api.get_file_href_by_id(access_keeper, image_id)
 
-    cart_product = get_cart_product(access_keeper, query.message.chat_id, product_id)
+    cart_product = elasticpath_api.get_cart_item_info_by_product_id(access_keeper, query.message.chat_id, product_id)
 
     bot.delete_message(chat_id=query.message.chat_id, message_id=query.message.message_id)
 

@@ -153,7 +153,7 @@ def add_product_to_cart(access_keeper, product_id, quantity, reference):
 
 
 def get_cart_items_info(access_keeper, reference):
-    """Get all product in cart for :reference:.
+    """Get all items in cart for :reference:.
 
     :param access_keeper: object, Access class instance
     :param reference: str, some internal string-ID of the client that is used to search for the cart in the future
@@ -171,7 +171,23 @@ def get_cart_items_info(access_keeper, reference):
 
     logger.debug(f'{len(items_in_cart)} items in cart')
 
-    items_in_cart_for_response = {'products': []}
+    default_product = {
+        'description': '',
+        'name': '',
+        'quantity': 0,
+        'price_per_unit': '',
+        'total_price': '$0.00',
+        'product_id': '',
+        'cart_item_id': ''
+    }
+
+    total_price = response_json['meta']['display_price']['with_tax']['formatted']
+    items_in_cart_for_response = {
+        'products': [],
+        'default_product': default_product,
+        'total_price': total_price
+    }
+
     for item in items_in_cart:
         item_in_cart = {
             'description': item['description'],
@@ -185,12 +201,30 @@ def get_cart_items_info(access_keeper, reference):
         items_in_cart_for_response['products'].append(item_in_cart)
         logger.debug(f'item {item["id"]} was handled')
 
-    total_price = response_json['meta']['display_price']['with_tax']['formatted']
-    items_in_cart_for_response['total_price'] = total_price
-
     logger.debug('items in carts were handled')
 
     return items_in_cart_for_response
+
+
+def get_cart_item_info_by_product_id(access_keeper, reference, product_id):
+    """Get item from cart for :reference: by :product_id:.
+
+    If :product_id: not in cart, function return "default_product"
+    :param access_keeper: object, Access class instance
+    :param reference: str, some internal string-ID of the client that is used to search for the cart in the future
+    :param product_id: str, id of product
+    :return: dict, item info
+    """
+    cart_items_info = get_cart_items_info(access_keeper, reference)
+    items_in_cart = cart_items_info['products']
+
+    for item in items_in_cart:
+        if item['product_id'] != product_id:
+            continue
+        logger.debug(f'{item["product_id"]} was found')
+        return item
+    logger.debug(f'{product_id} wasn"t found, return default_product')
+    return cart_items_info['default_product']
 
 
 def delete_cart_item(access_keeper, reference, cart_item_id):
