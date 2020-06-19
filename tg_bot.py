@@ -65,9 +65,7 @@ def get_database_connection():
         logger.debug('connection with Redis DB was established')
         return _database
 
-
-def send_cart_info(bot, update):
-    """Send message with cart info (name, description, price per unit, quantity, total_price)."""
+def get_cart_msg_and_keyboard(bot, update):
     access_keeper = get_elasticpath_access_keeper()
     cart_items_info = elasticpath_api.get_cart_items_info(access_keeper, update.message.chat_id)
     total_price = cart_items_info['total_price']
@@ -88,7 +86,14 @@ def send_cart_info(bot, update):
     logger.debug(f'keyboard was constructed')
 
     msg = '\n\n'.join(product_messages) + f'\n\nОбщая цена: {total_price}'
+    return msg, reply_markup
 
+
+def send_cart_info(bot, update):
+    """Send message with cart info (name, description, price per unit, quantity, total_price)."""
+    msg, reply_markup = get_cart_msg_and_keyboard(bot, update)
+
+    bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
     bot.send_message(text=msg, chat_id=update.message.chat_id, reply_markup=reply_markup)
 
     return 'HANDLE_CART'
@@ -159,7 +164,6 @@ def handle_menu(bot, update):
         condition = start(bot, query)
         return condition
 
-
     if query.data == 'cart':
         logger.debug('go to :send_cart_info: function')
         condition = send_cart_info(bot, query)
@@ -227,8 +231,9 @@ def waiting_email(bot, update):
         logger.debug('New customer was created')
         user_email = customer_or_status_code['data']['email']
 
-    msg = f'Вы прислали мне эту почту: {user_email}.\nСпасибо, мы скоро свяжеся с вами!'
-    bot.send_message(text=msg, chat_id=update.message.chat_id)
+    msg = f'Вы прислали мне эту почту: {user_email}.\nСпасибо, мы скоро свяжеся с вами!\n\nВаш заказ:\n'
+    msg_cart, _ = get_cart_msg_and_keyboard(bot, update)
+    bot.send_message(text=msg + msg_cart, chat_id=update.message.chat_id)
 
     condition = start(bot, update)
     return condition
@@ -245,6 +250,7 @@ def handle_cart(bot, update):
     if query.data == 'payment':
         logger.debug('User chose payment')
         msg = 'Пожалуйста, пришлите ваш email'
+        bot.delete_message(chat_id=query.message.chat_id, message_id=query.message.message_id)
         bot.send_message(text=msg, chat_id=query.message.chat_id)
         return 'WAITING_EMAIL'
 
