@@ -24,6 +24,10 @@ After you got `TG_BOT_TOKEN` you need to write to you telegram bot any message (
 
 `REDIS_DB_PASSWORD` - redis also will generate your DB password when your will init DB.
 
+`PRODUCTS_IN_PAGE` - The number of products that the bot will show on one page.
+
+`ADD_PRODUCT_AMOUNT_BUTTONS` - List of int, quantity of products that the user can add to the cart (e.g. `1,5,10`).
+
 Python3 should be already installed. 
 Then use `pip` (or `pip3`, if there is a conflict with Python2) to install dependencies:
 ```
