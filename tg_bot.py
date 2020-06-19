@@ -65,7 +65,9 @@ def get_database_connection():
         logger.debug('connection with Redis DB was established')
         return _database
 
+
 def get_cart_msg_and_keyboard(bot, update):
+    """Get cart info message and keyboard for cart interaction."""
     access_keeper = get_elasticpath_access_keeper()
     cart_items_info = elasticpath_api.get_cart_items_info(access_keeper, update.message.chat_id)
     total_price = cart_items_info['total_price']
@@ -153,6 +155,28 @@ def start(bot, update):
     return 'HANDLE_MENU'
 
 
+def get_cart_product(access_keeper, chat_id, product_id):
+    """Get info abouc product in cart by :product_id: for user :chat_id:"""
+    cart_items_info = elasticpath_api.get_cart_items_info(access_keeper, chat_id)['products']
+    default_product = {
+        'description': '',
+        'name': '',
+        'quantity': 0,
+        'price_per_unit': '',
+        'total_price': '$0.00',
+        'product_id': '',
+        'cart_item_id': ''
+    }
+    cart_product = [product for product in cart_items_info if product['product_id'] == product_id]
+
+    try:
+        cart_product = cart_product[0]
+    except IndexError:
+        cart_product = default_product
+
+    return cart_product
+
+
 def handle_menu(bot, update):
     """Menu with products."""
     query = update.callback_query
@@ -177,6 +201,8 @@ def handle_menu(bot, update):
     image_id = product['relationships']['main_image']['data']['id']
     image_href = elasticpath_api.get_file_href_by_id(access_keeper, image_id)
 
+    cart_product = get_cart_product(access_keeper, query.message.chat_id, product_id)
+
     bot.delete_message(chat_id=query.message.chat_id, message_id=query.message.message_id)
 
     stock_level = product['meta']['stock']['level']
@@ -187,6 +213,8 @@ def handle_menu(bot, update):
     {stock_level} units on stock
 
     {product['description']}
+
+    В корзине {cart_product['quantity']} шт. на {cart_product['total_price']}
     """
     logger.debug('reply message was constructed')
 
@@ -279,10 +307,11 @@ def handle_description(bot, update):
     access_keeper = get_elasticpath_access_keeper()
     product_id, quantity = query.data.split()
     logger.debug(f'User chose add product to cart. Product_id = {product_id}; quantity={quantity}')
-    update.callback_query.answer(text='Товар добавлен в корзину', show_alert=True)
     elasticpath_api.add_product_to_cart(access_keeper, product_id, quantity, query.message.chat_id)
     update.callback_query.answer(text='Товар добавлен в корзину', show_alert=True)
-    return 'HANDLE_DESCRIPTION'
+    query.data = product_id
+    condition = handle_menu(bot, update)
+    return condition
 
 
 def handle_users_reply(bot, update):
