@@ -1,4 +1,7 @@
 import logging
+import math
+from pprint import pprint
+import json
 
 import environs
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -29,6 +32,7 @@ def get_config():
         _config['redis_db_password'] = env.str("REDIS_DB_PASSWORD")
         _config['redis_db_address'] = env.str("REDIS_DB_ADDRESS")
         _config['redis_db_port'] = env.int("REDIS_DB_PORT")
+        _config['products_in_page'] = env.int("PRODUCTS_IN_PAGE")
         logger.debug('.env was read, config was constructed')
 
         return _config
@@ -92,12 +96,32 @@ def send_cart_info(bot, update):
 
 def start(bot, update):
     """Bot /start command."""
+    page = 0
+    if update.message.reply_markup:
+        bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
+        if update.data.startswith('page#'):
+            _, str_page = update.data.split('#')
+            page = int(str_page)
+
+    logger.debug(f'page number: {page}')
+
     access_keeper = get_elasticpath_access_keeper()
     products = elasticpath_api.get_all_products(access_keeper)
+    config = get_config()
+    products_in_page = config['products_in_page']
+
+    # sort for pagination, always return similar results for similar page
+    sorted_products = sorted(products, key=lambda x: x['name'])
+    products_pages = []
+    max_pages = math.ceil(len(sorted_products) / products_in_page)
+    for cur_page in range(0, max_pages):
+        page_start = products_in_page * cur_page
+        page_end = products_in_page * (cur_page + 1)
+        products_pages.append(sorted_products[page_start:page_end])
 
     keyboard = []
 
-    for product in products:
+    for product in products_pages[page]:
         product_name = product['name']
         product_id = product['id']
 
@@ -105,6 +129,15 @@ def start(bot, update):
 
         keyboard.append([btn])
         logger.debug(f'product {product_name} was added to keyboard. Product id: {product_id}')
+
+    previous_next_buttons = []
+    if page != 0:
+        previous_next_buttons.append(InlineKeyboardButton('<< назад', callback_data=f'page#{page - 1}'))
+    if page != (len(products_pages) - 1):
+        previous_next_buttons.append(InlineKeyboardButton('вперед >>', callback_data=f'page#{page + 1}'))
+
+    if previous_next_buttons:
+        keyboard.append(previous_next_buttons)
 
     keyboard.append([InlineKeyboardButton('Корзина', callback_data='cart')])
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -120,6 +153,12 @@ def handle_menu(bot, update):
     query = update.callback_query
 
     logger.debug(f'query.data = {query.data}')
+
+    if query.data.startswith('page#'):
+        logger.debug('go to :start: function')
+        condition = start(bot, query)
+        return condition
+
 
     if query.data == 'cart':
         logger.debug('go to :send_cart_info: function')
